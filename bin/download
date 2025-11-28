@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+current_script_path=${BASH_SOURCE[0]}
+plugin_dir=$(dirname "$(dirname "$current_script_path")")
+
+# shellcheck source=./lib/utils.bash
+source "${plugin_dir}/lib/utils.bash"
+
+mkdir -p "$ASDF_DOWNLOAD_PATH"
+
+# Claude Code is a single binary, no extraction needed
+release_file="$ASDF_DOWNLOAD_PATH/claude-code"
+
+# Download binary to the download directory
+download_release "$ASDF_INSTALL_VERSION" "$release_file"
+
+# Verify checksum
+verify_checksum "$ASDF_INSTALL_VERSION" "$release_file"
+
+# Make executable
+chmod +x "$release_file"
