@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+current_script_path=${BASH_SOURCE[0]}
+plugin_dir=$(dirname "$(dirname "$current_script_path")")
+
+# shellcheck source=./lib/utils.bash
+. "${plugin_dir}/lib/utils.bash"
+
+# Get latest version from NPM dist-tags
+curl_opts=(-fsSL)
+
+version=$(curl "${curl_opts[@]}" "https://registry.npmjs.org/@anthropic-ai/claude-code" 2>/dev/null |
+	grep -o '"latest":"[^"]*"' |
+	sed 's/"latest":"\([^"]*\)"/\1/')
+
+if [ -z "$version" ]; then
+	# Fallback: get the highest version number
+	version="$(list_all_versions | sort_versions | tail -n1 | xargs echo)"
+fi
+
+printf "%s\n" "$version"
