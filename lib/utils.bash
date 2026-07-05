@@ -2,15 +2,13 @@
 
 set -euo pipefail
 
-GH_REPO="https://github.com/anthropics/claude-code"
 TOOL_NAME="claude-code"
-TOOL_TEST="claude --version"
 
 # Base URL for Claude Code releases
 CLAUDE_CODE_BASE_URL="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
 
 fail() {
-	echo -e "asdf-$TOOL_NAME: $*"
+	printf "asdf-%s: %s\n" "$TOOL_NAME" "$*" >&2
 	exit 1
 }
 
@@ -22,12 +20,10 @@ sort_versions() {
 }
 
 list_all_versions() {
-	# Fetch versions from NPM registry - extract only from "versions" object keys
 	if command -v jq &>/dev/null; then
 		curl "${curl_opts[@]}" "https://registry.npmjs.org/@anthropic-ai/claude-code" 2>/dev/null |
 			jq -r '.versions | keys[]'
 	else
-		# Fallback without jq - extract versions section and parse keys
 		curl "${curl_opts[@]}" "https://registry.npmjs.org/@anthropic-ai/claude-code" 2>/dev/null |
 			sed -n 's/.*"versions":\({[^}]*}\).*/\1/p' |
 			grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' |
@@ -45,7 +41,6 @@ get_platform() {
 	case "$os" in
 	darwin) ;;
 	linux)
-		# Check for musl vs glibc
 		if ldd --version 2>&1 | grep -q musl; then
 			arch="${arch}-musl"
 		fi
@@ -111,11 +106,9 @@ verify_checksum() {
 
 	echo "* Verifying checksum..."
 
-	# Download manifest and extract checksum for our platform
 	if command -v jq &>/dev/null; then
 		expected_checksum=$(curl "${curl_opts[@]}" "$manifest_url" | jq -r ".platforms.\"${platform}\".checksum")
 	else
-		# Fallback without jq - parse JSON with grep/sed
 		expected_checksum=$(curl "${curl_opts[@]}" "$manifest_url" |
 			grep -A2 "\"${platform}\"" |
 			grep "checksum" |
@@ -123,17 +116,16 @@ verify_checksum() {
 	fi
 
 	if [ -z "$expected_checksum" ] || [ "$expected_checksum" = "null" ]; then
-		echo "* Warning: Could not fetch checksum, skipping verification"
+		echo "* Warning: Could not fetch checksum, skipping verification" >&2
 		return 0
 	fi
 
-	# Calculate actual checksum
 	if command -v sha256sum &>/dev/null; then
 		actual_checksum=$(sha256sum "$filename" | awk '{print $1}')
 	elif command -v shasum &>/dev/null; then
 		actual_checksum=$(shasum -a 256 "$filename" | awk '{print $1}')
 	else
-		echo "* Warning: No sha256sum or shasum available, skipping verification"
+		echo "* Warning: No sha256sum or shasum available, skipping verification" >&2
 		return 0
 	fi
 
@@ -153,18 +145,15 @@ install_version() {
 		fail "asdf-$TOOL_NAME supports release installs only"
 	fi
 
-	(
-		mkdir -p "$install_path"
-		cp "$ASDF_DOWNLOAD_PATH/claude-code" "$install_path/claude"
-		chmod +x "$install_path/claude"
+	mkdir -p "$install_path"
 
-		# Verify installation
-		local tool_cmd="claude"
-		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
-
-		echo "$TOOL_NAME $version installation was successful!"
-	) || (
+	if ! cp "$ASDF_DOWNLOAD_PATH/claude-code" "$install_path/claude"; then
 		rm -rf "$install_path"
 		fail "An error occurred while installing $TOOL_NAME $version."
-	)
+	fi
+
+	chmod +x "$install_path/claude"
+	test -x "$install_path/claude" || fail "Expected $install_path/claude to be executable."
+
+	echo "$TOOL_NAME $version installation was successful!"
 }

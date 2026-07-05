@@ -23,8 +23,6 @@
 Plugin:
 
 ```shell
-asdf plugin add claude-code
-# or
 asdf plugin add claude-code https://github.com/wguilherme/asdf-claude-code.git
 ```
 
@@ -37,8 +35,8 @@ asdf list-all claude-code
 # Install specific version
 asdf install claude-code latest
 
-# Set a version globally (on your ~/.tool-versions file)
-asdf global claude-code latest
+# Set a version globally
+asdf set -u claude-code latest
 
 # Now claude-code commands are available
 claude --version
